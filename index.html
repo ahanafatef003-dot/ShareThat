@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#080808" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Vault — Private Photo Backup</title>
+  <style>
+    :root{
+      --bg:#070707;
+      --bg2:#0d0d0e;
+      --panel:rgba(255,255,255,.055);
+      --panel-strong:rgba(255,255,255,.085);
+      --line:rgba(255,255,255,.10);
+      --line-strong:rgba(255,255,255,.17);
+      --text:#f7f7f7;
+      --muted:#9b9b9f;
+      --subtle:#68686d;
+      --accent:#ffffff;
+      --good:#94e6aa;
+      --bad:#ff8d8d;
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --r-xl:30px;
+      --r-lg:22px;
+      --r-md:16px;
+      --ease:cubic-bezier(.22,.61,.36,1);
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body{min-height:100vh;overflow-x:hidden}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    img{display:block;max-width:100%}
+
+    body::before{
+      content:"";
+      position:fixed; inset:-15%;
+      pointer-events:none;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(126,126,255,.12), transparent 30%),
+        radial-gradient(circle at 83% 28%, rgba(255,92,163,.09), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(80,180,255,.08), transparent 34%);
+      filter:blur(36px);
+      opacity:.65;
+    }
+
+    .noise{
+      position:fixed;inset:0;pointer-events:none;opacity:.035;mix-blend-mode:screen;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");
+      z-index:1000;
+    }
+
+    .app{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:18px 16px 54px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 18px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand-mark{
+      width:34px;height:34px;border-radius:11px;
+      display:grid;place-items:center;font-size:15px;font-weight:800;letter-spacing:-.06em;
+      background:linear-gradient(145deg,#fff,#7b7b7d);
+      color:#080808;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 20px rgba(255,255,255,.08);
+    }
+    .brand-name{font-size:15px;font-weight:750;letter-spacing:.02em}
+
+    .hero{
+      position:relative;overflow:hidden;
+      border:1px solid var(--line);border-radius:var(--r-xl);
+      background:
+        radial-gradient(circle at 72% 14%, rgba(255,255,255,.15), transparent 24%),
+        linear-gradient(145deg, rgba(255,255,255,.11), rgba(255,255,255,.025));
+      box-shadow:var(--shadow);
+      padding:28px 22px 22px;
+      isolation:isolate;
+    }
+    .hero::before{
+      content:"";position:absolute;width:240px;height:240px;border-radius:50%;right:-80px;top:-100px;
+      background:rgba(255,255,255,.11);filter:blur(28px);opacity:.7;z-index:-1
+    }
+    .hero-grid{display:grid;gap:22px;position:relative;z-index:2}
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#b8b8bd;
+      margin-bottom:13px
+    }
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 16px rgba(148,230,170,.65)}
+    h1{margin:0;font-size:clamp(36px,9vw,74px);line-height:.97;letter-spacing:-.055em;max-width:720px}
+    .hero-copy{color:#a8a8ac;max-width:630px;font-size:14px;line-height:1.6;margin:17px 0 20px}
+    .hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .primary{
+      border:0;padding:13px 17px;border-radius:999px;background:#fff;color:#070707;font-weight:750;
+      display:inline-flex;align-items:center;gap:9px;transition:.25s var(--ease);box-shadow:0 10px 28px rgba(255,255,255,.09)
+    }
+    .primary:hover{transform:translateY(-2px) scale(1.01)}
+
+    .vault-object{
+      min-height:260px;display:grid;place-items:center;position:relative;
+    }
+    .orbital{position:absolute;width:220px;height:220px;border:1px solid rgba(255,255,255,.11);border-radius:50%;transform:rotateX(66deg) rotateZ(16deg)}
+    .orbital::before,.orbital::after{content:"";position:absolute;inset:17px;border:1px solid rgba(255,255,255,.07);border-radius:50%}
+    .orbital::after{inset:38px}
+    
+    .core{
+      width:132px;height:132px;border-radius:39% 61% 55% 45% / 58% 44% 56% 42%;
+      transform:rotate(-8deg);
+      background:
+        radial-gradient(circle at 33% 28%, rgba(255,255,255,.92) 0 5%, transparent 6%),
+        radial-gradient(circle at 64% 66%, rgba(255,255,255,.18), transparent 36%),
+        linear-gradient(145deg,#2d2d31,#09090a 68%);
+      box-shadow:
+        inset 2px 2px 12px rgba(255,255,255,.18),
+        inset -18px -18px 28px rgba(0,0,0,.55),
+        0 28px 70px rgba(0,0,0,.56);
+      position:relative;
+      display: grid;
+      place-items: center;
+    }
+    .core::after{content:"";position:absolute;inset:11px;border-radius:inherit;border:1px solid rgba(255,255,255,.12)}
+    
+    .float-chip{
+      position:absolute;width:52px;height:52px;
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:0 15px 30px rgba(0,0,0,.38),inset 1px 1px 0 rgba(255,255,255,.15);
+      display:grid;place-items:center;color:#fff;
+      transition: transform 0.5s var(--ease);
+    }
+    
+    /* Bot Avatars Styling */
+    .chip-a { top: -8px; right: 28px; transform: rotate(12deg); border-radius: 50%; background: linear-gradient(135deg, #4da4ff, #0055ff); }
+    .chip-b { bottom: 18px; left: -8px; transform: rotate(-15deg); border-radius: 18px; background: linear-gradient(135deg, #ff9f43, #e65100); }
+    .chip-c { top: 40%; right: -16px; transform: rotate(18deg); border-radius: 50% 50% 12px 50%; background: linear-gradient(135deg, #ff6b9e, #c2185b); }
+    .chip-d { bottom: -12px; right: 38px; transform: rotate(-8deg); border-radius: 16px; background: linear-gradient(135deg, #26c6da, #00796b); }
+    .chip-e { top: 25px; left: 5px; transform: rotate(22deg); border-radius: 50%; background: linear-gradient(135deg, #b388ff, #7b1fa2); width: 44px; height: 44px; }
+
+    .drop-zone{border:1px solid rgba(255,255,255,.09);border-radius:var(--r-xl);padding:16px;margin-top:14px;display:none}
+    .drop-zone.show{display:block}
+    .drop-zone.drag{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.25)}
+
+    .toast-wrap{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;gap:8px;width:min(92vw,430px);pointer-events:none}
+    .toast{
+      display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:17px;background:rgba(24,24,25,.88);
+      border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 45px rgba(0,0,0,.36);
+      backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+      animation:toastIn .35s var(--ease)
+    }
+    @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+    .toast .t-icon{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);font-size:12px}
+    .toast-main{min-width:0;flex:1}.toast-title{font-size:12px;font-weight:750}.toast-sub{font-size:11px;color:#8d8d92;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+    @media (min-width:720px){
+      .app{padding:26px 24px 70px}
+      .hero{padding:38px}
+      .hero-grid{grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);align-items:center}
+      .vault-object{min-height:340px}
+      .drop-zone{display:block}
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">V</div>
+        <div class="brand-name">Vault</div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow"><span class="status-dot"></span> Background backup active</div>
+          <h1>Your photos.<br>Backed up quietly.</h1>
+          <p class="hero-copy">
+            Choose any image from your device and Vault instantly creates a backup on ImgBB.
+            The photo will be uploaded securely in the background without being displayed on this page.
+          </p>
+          <div class="hero-actions">
+            <button class="primary" id="chooseBtn">Choose a photo <span aria-hidden="true">↗</span></button>
+          </div>
+          <div class="drop-zone" id="dropZone">
+            <div style="font-size:12px;font-weight:700">Desktop shortcut</div>
+            <div style="font-size:11px;color:#777;margin-top:4px">Drop images here — the backup starts automatically.</div>
+          </div>
+        </div>
+
+        <div class="vault-object" aria-hidden="true">
+          <div class="orbital"></div>
+          
+          <!-- Central Bot (Core) -->
+          <div class="core">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="z-index:2; transform:rotate(8deg);">
+              <rect x="6.5" y="7.5" width="4" height="8.5" rx="2" transform="rotate(22 8.5 11.75)" fill="white" />
+              <rect x="14.5" y="7.5" width="4" height="8.5" rx="2" transform="rotate(22 16.5 11.75)" fill="white" />
+            </svg>
+          </div>
+          
+          <!-- Floating Bots -->
+          <div class="float-chip chip-a">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="7" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 8.75 11.75)" fill="white" />
+              <rect x="14" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 15.75 11.75)" fill="white" />
+            </svg>
+          </div>
+          <div class="float-chip chip-b">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="7" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 8.75 11.75)" fill="white" />
+              <rect x="14" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 15.75 11.75)" fill="white" />
+            </svg>
+          </div>
+          <div class="float-chip chip-c">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="7" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 8.75 11.75)" fill="white" />
+              <rect x="14" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 15.75 11.75)" fill="white" />
+            </svg>
+          </div>
+          <div class="float-chip chip-d">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="7" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 8.75 11.75)" fill="white" />
+              <rect x="14" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 15.75 11.75)" fill="white" />
+            </svg>
+          </div>
+          <div class="float-chip chip-e">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="7" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 8.75 11.75)" fill="white" />
+              <rect x="14" y="8" width="3.5" height="7.5" rx="1.75" transform="rotate(22 15.75 11.75)" fill="white" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <input id="fileInput" class="sr-only" type="file" accept="image/*" />
+
+    <div class="toast-wrap" id="toastWrap"></div>
+  </main>
+
+  <script>
+    /**
+     * REPLACE THIS PLACEHOLDER WITH YOUR IMGBB API KEY
+     */
+    const IMGBB_API_KEY = "3a46bba0d4e63441106d2346299c7bc2";
+    const IMGBB_ENDPOINT = "https://api.imgbb.com/1/upload";
+
+    const els = {
+      fileInput: document.getElementById("fileInput"),
+      chooseBtn: document.getElementById("chooseBtn"),
+      toastWrap: document.getElementById("toastWrap"),
+      dropZone: document.getElementById("dropZone")
+    };
+
+    bindEvents();
+
+    function bindEvents(){
+      els.chooseBtn.addEventListener("click", () => els.fileInput.click());
+
+      els.fileInput.addEventListener("change", async (e) => {
+        const files = [...(e.target.files || [])];
+        e.target.value = ""; 
+        if(!files.length) return;
+        for(const file of files) {
+          if(!file.type.startsWith("image/")) {
+            toast("Unsupported file", "Please choose an image.", "error");
+            continue;
+          }
+          await startBackup(file);
+        }
+      });
+
+      ["dragenter","dragover"].forEach(evt => els.dropZone.addEventListener(evt, (e) => {
+        e.preventDefault(); els.dropZone.classList.add("drag");
+      }));
+      ["dragleave","drop"].forEach(evt => els.dropZone.addEventListener(evt, (e) => {
+        e.preventDefault(); els.dropZone.classList.remove("drag");
+      }));
+      els.dropZone.addEventListener("drop", async (e) => {
+        const files = [...(e.dataTransfer.files || [])].filter(f => f.type.startsWith("image/"));
+        for(const file of files) await startBackup(file);
+      });
+    }
+
+    async function startBackup(file){
+      if(!IMGBB_API_KEY || IMGBB_API_KEY === "YOUR_IMGBB_API_KEY_HERE"){
+        toast("API key missing", "Please add your key to the source code.", "error");
+        return;
+      }
+
+      toast("Uploading...", file.name, "busy");
+
+      try{
+        await uploadToImgBB(file, IMGBB_API_KEY);
+        toast("Upload complete!", "Securely saved to ImgBB", "success");
+      }catch(err){
+        console.error(err);
+        toast("Upload failed", err.message || "Network or ImgBB error.", "error");
+      }
+    }
+
+    async function uploadToImgBB(file, apiKey){
+      const form = new FormData();
+      form.append("key", apiKey);
+      form.append("image", file);
+
+      const response = await fetch(IMGBB_ENDPOINT, {
+        method: "POST",
+        body: form
+      });
+
+      let data = null;
+      try { data = await response.json(); } catch {}
+
+      if(!response.ok || !data?.success){
+        const msg = data?.error?.message || `HTTP ${response.status}`;
+        throw new Error(msg);
+      }
+
+      return data.data;
+    }
+
+    function toast(title, sub, type="info"){
+      const el = document.createElement("div");
+      const icon = type === "success" ? "✓" : type === "error" ? "!" : type === "busy" ? "↗" : "•";
+      el.className = "toast";
+      el.innerHTML = `
+        <div class="t-icon">${icon}</div>
+        <div class="toast-main"><div class="toast-title">${escapeHtml(title)}</div><div class="toast-sub">${escapeHtml(sub || "")}</div></div>
+      `;
+      els.toastWrap.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(10px)";
+        el.style.transition = ".25s ease";
+        setTimeout(() => el.remove(), 280);
+      }, type === "busy" ? 2800 : 2200);
+    }
+
+    function escapeHtml(str){
+      return String(str ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    }
+  </script>
+</body>
+              </html>
+
